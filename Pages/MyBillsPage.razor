@@ -1,0 +1,193 @@
+﻿@page "/mybillspage"
+@using SplitWise.Data
+@using SplitWiseDB.Data.SplitWise
+@inject NavigationManager NavigationManager
+@inject Data.BillService BillService
+@inject Data.BillSplitService BillSplitService
+@inject Data.GroupService GroupService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inherits OwningComponentBase<BillService>
+
+
+<AuthorizeView>
+    <Authorized>
+        <h1>Мои счета</h1>
+        <br />
+        @if (bills == null)
+        {
+            <p><em>Загружаем данные...</em></p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th> Дата </th>
+                        <th> Создатель </th>
+                        <th> Описание </th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var bill in bills)
+                    {
+                        <tr>
+                            <td>@bill.Date.Value.ToShortDateString()</td>
+                            <td>@bill.UserName</td>
+                            <td>@bill.Description</td>
+                            <td>
+                                <button class="btn btn-primary"
+                                        @onclick="(() => EditBill(bill))">
+                                    Редактировать
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-primary"
+                                        @onclick="(() => OpenBill(bill, bill.Id, bill.Description, bill.Currency, bill.UserName))">
+                                    Подробнее
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-primary"
+                                        @onclick="(() => DeleteBill(bill))">
+                                    Закрыть счёт
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p>
+                <button class="btn btn-primary"
+                        @onclick="AddNewBill">
+                    Добавить трату
+                </button>
+            </p>
+            @if (ShowPopup)
+            {
+                <div class="modal" tabindex="-1" style="display:block" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 class="modal-title">Редактировать</h3>
+                                <button type="button" class="close"
+                                        @onclick="ClosePopup">
+                                    <span aria-hidden="true">X</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                
+                                <input class="form-control" type="text"
+                                       placeholder="Описание"
+                                       @bind="objBill.Description" />
+                                <br />
+                                <input class="form-control" type="text"
+                                       placeholder="Валюта"
+                                       @bind="objBill.Currency" />
+                                <br />
+                                <button class="btn btn-primary"
+                                        @onclick="SaveBill">
+                                    Сохранить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>Войдите в приложение.</p>
+    </NotAuthorized>
+</AuthorizeView>
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    List<Bill> bills;
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+        bills = await @Service.GetMyBillsAsync(user.Identity.Name);
+    }
+
+    Bill objBill = new Bill();
+
+    bool ShowPopup = false;
+
+    void ClosePopup()
+    {
+        ShowPopup = false;
+    }
+
+    void AddNewBill()
+    {
+        objBill = new Bill();
+        objBill.Id = 0;
+        ShowPopup = true;
+    }
+
+    async Task SaveBill()
+    {
+        ShowPopup = false;
+        var user = (await authenticationStateTask).User;
+        if (objBill.Id == 0)
+        {
+            Bill objNewBill = new Bill();
+
+            objNewBill.GroupId = GroupService.IdNumber;
+
+            objNewBill.Date = System.DateTime.Now;
+
+            objNewBill.UserName = user.Identity.Name;
+
+            objNewBill.Split = objBill.Split;
+
+            objNewBill.Amount = Convert.ToDouble(objBill.Amount);
+
+            objNewBill.Description = objBill.Description;
+
+            objNewBill.Currency = objBill.Currency;
+
+            var result =
+            @Service.CreateBillAsync(objNewBill);
+        }
+        else
+        {
+            var result =
+            @Service.UpdateBillAsync(objBill);
+        }
+
+        bills =
+        await @Service.GetMyBillsAsync(user.Identity.Name);
+    }
+
+    void OpenBill(Bill billsTable, int i, string description, string curr, string name)
+    {
+        BillService.UserName = name;
+        BillService.Description = description;
+        BillService.IdNumber = i;
+        BillService.Currency = curr;
+        objBill = billsTable;
+        NavigationManager.NavigateTo("billsplitpage");
+
+    }
+
+    void EditBill(Bill billTable)
+    {
+        objBill = billTable;
+        ShowPopup = true;
+    }
+
+    async Task DeleteBill(Bill billTable)
+    {
+        ShowPopup = false;
+        var user = (await authenticationStateTask).User;
+        objBill = billTable;
+        var result = @Service.DeleteBillAsync(objBill);
+        bills =
+        await @Service.GetMyBillsAsync(user.Identity.Name);
+    }
+}

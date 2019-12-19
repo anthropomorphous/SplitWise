@@ -1,0 +1,155 @@
+﻿@page "/friendspage"
+@using SplitWise.Data
+@using SplitWiseDB.Data.SplitWise
+@using Microsoft.Extensions.Logging
+@inject NavigationManager NavigationManager
+@inject Data.FriendsService FriendsService
+@inject ILogger<FriendsPage> logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inherits OwningComponentBase<FriendsService>
+<style>
+    ul.bill-split {
+        border-left: 5px solid #c17900;
+        background-color: #f1f1f1;
+        list-style-type: none;
+        padding: 20px 25px;
+    }
+</style>
+
+
+<AuthorizeView>
+    <Authorized>
+        <h1>Друзья</h1>
+        <br />
+        @if (friendsTableList == null)
+        {
+            <p><em>Загружаем данные...</em></p>
+        }
+        else
+        {
+            <div>
+
+                <ul class="bill-split">
+                    @foreach (var friendsTable in friendsTableList)
+                    {
+
+                        <li class="divider"></li>
+                        <li>
+                            <a href="emailsender" style="font-size: x-large;">
+                                <span></span> @friendsTable.FriendName <span class="badge">@friendsTable.FriendId</span>
+                            </a>
+                        </li>
+
+                    }
+                </ul>
+            </div>
+            <p>
+                <button class="btn btn-primary"
+                        @onclick="AddNewFriend">
+                    Добавить друга
+                </button>
+            </p>
+            @if (ShowPopup)
+            {
+                <div class="modal" tabindex="-1" style="display:block" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 class="modal-title">Редактировать</h3>
+                                <button type="button" class="close"
+                                        @onclick="ClosePopup">
+                                    <span aria-hidden="true">X</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <input class="form-control" type="text"
+                                       placeholder=""
+                                       @bind="objFriendsTable.FriendName" />
+                                <br />
+                                <button class="btn btn-primary"
+                                        @onclick="SaveFriendsTable">
+                                    Сохранить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>Войдите в приложение.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    List<FriendsTable> friendsTableList;
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        try
+        {
+
+            friendsTableList = await @Service.GetFriendsAsync(user.Identity.Name);
+        }
+        catch (Exception e)
+        {
+            //logger.LogError(e, e.Message);
+        }
+
+    }
+
+    FriendsTable objFriendsTable = new FriendsTable();
+    AspNetUsers objUser = new AspNetUsers();
+
+    bool ShowPopup = false;
+
+    void ClosePopup()
+    {
+        ShowPopup = false;
+    }
+
+    void AddNewFriend()
+    {
+        objFriendsTable = new FriendsTable();
+        objFriendsTable.Id = 0;
+        ShowPopup = true;
+    }
+
+
+    async Task SaveFriendsTable()
+    {
+        ShowPopup = false;
+        var user = (await authenticationStateTask).User;
+        if (objFriendsTable.Id == 0)
+        {
+            FriendsTable objNewFriendsTable = new FriendsTable();
+            AspNetUsers objNewUsers = new AspNetUsers();
+
+            objNewFriendsTable.UserName = user.Identity.Name;
+
+            objNewFriendsTable.UserId = objFriendsTable.UserId;
+
+            objNewFriendsTable.FriendName = objFriendsTable.FriendName;
+
+            objNewFriendsTable.FriendId = objUser.Id;
+
+            var result =
+            @Service.CreateFriendsTableAsync(objNewFriendsTable);
+        }
+        else
+        {
+            var result =
+            @Service.UpdateFriendsTableAsync(objFriendsTable);
+        }
+
+        friendsTableList =
+        await @Service.GetFriendsAsync(user.Identity.Name);
+    }
+
+}

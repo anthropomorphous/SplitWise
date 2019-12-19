@@ -1,0 +1,110 @@
+﻿@page "/emailsender"
+@using System.Net;
+@using System.Net.Mail;
+@using MimeKit;
+@using SplitWise.Data
+@using SplitWiseDB.Data.SplitWise
+@using Microsoft.Extensions.Logging
+@inject ILogger<EmailSender> logger
+@inject NavigationManager NavigationManager
+@inject Data.BillSplitService BillSplitService
+@inject Data.BillService BillService
+@inject Data.EmailSenderService EmailSenderService
+@inherits OwningComponentBase<EmailSenderService>
+
+<style>
+    input.my-input{
+        width: 325px;
+    }
+    input.large-input{
+        width: 350px;
+        line-grid: create;
+        height: 100px;
+    }
+</style>
+
+<h3>Отправьте письмо участнику:</h3>
+<br />
+<div>
+    <div>
+        Ваша почта:
+        <input class="my-input form-control"
+               type="text"
+               name="customerEmail"
+               placeholder="Ваш Email"
+               @bind="eMailFrom" />
+    </div>
+    <br />
+
+    <div>
+        Ваш пароль:
+        <input class="my-input form-control"
+               type="password" name="password"
+               placeholder="Ваш пароль"
+               @bind="password" />
+    </div>
+    <br />
+
+    <div>
+        <span>
+            Получатель:
+            <input class="my-input form-control"
+                   typeof="text"
+                   placeholder="Email участника"
+                   @bind="BillSplitService.RecipientName" />
+        </span>
+    </div>
+    <br />
+
+    <div>
+        Ваше сообщение: <br />
+        <textarea name="customerRequest" 
+                  class="form-control" 
+                  cols="45" 
+                  rows="4"
+                  placeholder="Введите сообщение @eMailTo..."
+                  @bind="message">
+        </textarea>
+
+    </div>
+    <br />
+
+    <button class="btn btn-primary"
+            @onclick="SendMail">
+        Отправить
+    </button>
+</div>
+
+@code {
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    string eMailFrom = "";
+    string subject = "";
+    string message = "";
+    string password = "";
+    string eMailTo = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+        //bills = await @Service.GetBillSplitAsync(BillSplitService.RecipientName);
+        eMailFrom = user.Identity.Name;
+        eMailTo = BillSplitService.RecipientName;
+    }
+
+
+    async Task SendMail()
+    {
+
+        var result =
+           @Service.SendEmailAsync(eMailFrom, password, eMailTo, subject, message);
+
+        logger.LogInformation("Message is sent");
+
+        // lbl =
+        //  await @Service.SendEmailAsync(EmailService.Message);
+    }
+
+}

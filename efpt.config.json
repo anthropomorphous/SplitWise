@@ -1,0 +1,42 @@
+﻿{
+   "ContextClassName": "SplitwiseContext",
+   "ContextNamespace": null,
+   "DefaultDacpacSchema": null,
+   "DoNotCombineNamespace": false,
+   "IdReplace": false,
+   "IncludeConnectionString": false,
+   "ModelNamespace": null,
+   "OutputContextPath": null,
+   "OutputPath": "Data\\SplitWise",
+   "ProjectRootNamespace": "SplitWiseDB",
+   "SelectedHandlebarsLanguage": 0,
+   "SelectedToBeGenerated": 0,
+   "Tables": [
+      {
+         "HasPrimaryKey": true,
+         "Name": "[dbo].[AspNetUsers]"
+      },
+      {
+         "HasPrimaryKey": true,
+         "Name": "[dbo].[Bill]"
+      },
+      {
+         "HasPrimaryKey": true,
+         "Name": "[dbo].[BillSplit]"
+      },
+      {
+         "HasPrimaryKey": true,
+         "Name": "[dbo].[FriendsTable]"
+      },
+      {
+         "HasPrimaryKey": true,
+         "Name": "[dbo].[Group]"
+      }
+   ],
+   "UseDatabaseNames": false,
+   "UseFluentApiOnly": true,
+   "UseHandleBars": false,
+   "UseInflector": false,
+   "UseLegacyPluralizer": false,
+   "UseSpatial": false
+}

@@ -1,0 +1,287 @@
+﻿@page "/billsplitpage"
+@using SplitWise.Data
+@using SplitWiseDB.Data.SplitWise
+@using Microsoft.Extensions.Logging
+@inject NavigationManager NavigationManager
+@inject Data.BillSplitService BillSplitService
+@inject Data.BillService BillService
+@inject ILogger<BillSplitPage> logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@inherits OwningComponentBase<BillSplitService>
+
+<style>
+    ul.bill-split {
+        border-left: 5px solid #c17900;
+        background-color: #f1f1f1;
+        list-style-type: none;
+        padding: 20px 25px;
+    }
+
+    .clickme {
+        background-color: #c17900;
+        padding: 8px 20px;
+        text-decoration: none;
+        font-weight: lighter;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 200px;
+    }
+</style>
+
+
+<AuthorizeView>
+    <Authorized>
+        @if (@context.User.Identity.Name != BillService.UserName)
+        {
+            @if (billSplitList == null)
+            {
+                <p><em>Загружаем данные...</em></p>
+            }
+            else
+            {
+                <h1>Подробнее о счёте @description</h1>
+                <br />
+                <div>
+                    <h3>На кого делим:</h3>
+                    <br />
+                    <ul class="bill-split">
+                        @foreach (var billsplit in billSplitList)
+                        {
+
+                            <li class="divider"></li>
+                            <li>
+                                <h3>
+                                    <button class="btn btn-primary clickme" @onclick="(() => OpenEmailSender(billsplit, billsplit.RecipientName))">  @billsplit.RecipientName </button>
+                                    <span> @billsplit.Amount @currency </span>
+
+                                </h3>
+                            </li>
+
+                        }
+                    </ul>
+                </div>
+                <p>
+                    <button class="btn btn-primary"
+                            @onclick="(() => OpenEmailSender(thisBillSplit, username))">
+                        Оповестить об оплате
+                    </button>
+                </p>
+                @if (ShowPopup)
+                {
+                    <div class="modal" tabindex="-1" style="display:block" role="dialog">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3 class="modal-title">Редактировать</h3>
+                                    <button type="button" class="close"
+                                            @onclick="ClosePopup">
+                                        <span aria-hidden="true">X</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <input class="form-control" type="text"
+                                           placeholder="Email участника"
+                                           @bind="objBillSplit.RecipientName" />
+                                    <br />
+                                    <input class="form-control" type="text"
+                                           placeholder="Сумма"
+                                           @bind="objBillSplit.Amount" />
+                                    <br />
+                                    <button class="btn btn-primary"
+                                            @onclick="SaveBillSplit">
+                                        Сохранить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            }
+        }
+        else
+        {
+            @if (billSplitList == null)
+            {
+                <p><em>Загружаем данные...</em></p>
+            }
+            else
+            {
+                <h1>Подробнее о счёте "@BillService.Description"</h1>
+                <div>
+                    <h3>На кого делим:</h3>
+
+                    <ul class="bill-split">
+                        @foreach (var billsplit in billSplitList)
+                        {
+
+                            <li class="divider"></li>
+                            <li>
+                                <h3>
+                                    <button class="btn btn-primary clickme" @onclick="(() => OpenEmailSender(billsplit, billsplit.RecipientName))">  @billsplit.RecipientName </button>
+                                    <span> @billsplit.Amount @BillService.Currency </span>
+                                    <button class="btn btn-primary"
+                                            @onclick="(() => DeleteBillSplit(billsplit, idBill))">
+                                        Удалить участника
+                                    </button>
+
+                                </h3>
+                            </li>
+
+                        }
+                    </ul>
+                </div>
+                <p>
+                    <button class="btn btn-primary"
+                            @onclick="AddNewBillSplit">
+                        Добавить участника
+                    </button>
+                </p>
+                @if (ShowPopup)
+                {
+                    <div class="modal" tabindex="-1" style="display:block" role="dialog">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3 class="modal-title">Редактировать</h3>
+                                    <button type="button" class="close"
+                                            @onclick="ClosePopup">
+                                        <span aria-hidden="true">X</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <input class="form-control" type="text"
+                                           placeholder="Email участника"
+                                           @bind="objBillSplit.RecipientName" />
+                                    <br />
+                                    <input class="form-control" type="text"
+                                           placeholder="Сумма"
+                                           @bind="objBillSplit.Amount" />
+                                    <br />
+                                    <button class="btn btn-primary"
+                                            @onclick="SaveBillSplit">
+                                        Сохранить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            }
+        }
+
+
+    </Authorized>
+    <NotAuthorized>
+        <p>Войдите в приложение.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    List<BillSplit> billSplitList;
+    BillSplit thisBillSplit = new BillSplit();
+    string username = "";
+    string description = "";
+    string currency = "";
+    int idBill = 0;
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        try
+        {
+            billSplitList = await @Service.GetBillSplitAsync(BillService.IdNumber);
+            BillSplit thisBillSplit = billSplitList.First();
+            username = thisBillSplit.UserName;
+            description = thisBillSplit.Description;
+            currency = thisBillSplit.Currency;
+            idBill = thisBillSplit.BillId;
+
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, e.Message);
+        }
+
+    }
+
+    BillSplit objBillSplit = new BillSplit();
+    Bill objBill = new Bill();
+
+
+    bool ShowPopup = false;
+
+    void ClosePopup()
+    {
+        ShowPopup = false;
+    }
+
+    void AddNewBillSplit()
+    {
+        objBillSplit = new BillSplit();
+        objBillSplit.Id = 0;
+        ShowPopup = true;
+    }
+
+    async Task SaveBillSplit()
+    {
+
+        ShowPopup = false;
+        var user = (await authenticationStateTask).User;
+        if (objBillSplit.Id == 0)
+        {
+            BillSplit objNewBillSplit = new BillSplit();
+
+            objNewBillSplit.Date = System.DateTime.Now;
+
+            objNewBillSplit.BillId = BillService.IdNumber;
+
+            objNewBillSplit.RecipientName = objBillSplit.RecipientName;
+
+            objNewBillSplit.Amount = objBillSplit.Amount;
+
+            objNewBillSplit.UserName = user.Identity.Name;
+
+            objNewBillSplit.Currency = BillService.Currency;
+
+            objNewBillSplit.Description = BillService.Description;
+
+            var result =
+            @Service.CreateBillSplitAsync(objNewBillSplit);
+        }
+        else
+        {
+            var result =
+            @Service.UpdateBillSplitAsync(objBillSplit);
+        }
+
+        billSplitList =
+        await @Service.GetBillSplitAsync(BillService.IdNumber);  //обновление после добавления юзера, с ним всё норм
+    }
+
+    async Task DeleteBillSplit(BillSplit billSplit, int id)
+    {
+        ShowPopup = false;
+        var user = (await authenticationStateTask).User;
+        var result = @Service.DeleteBillSplitAsync(billSplit);
+        billSplitList =
+        await @Service.GetBillSplitAsync(id);
+    }
+
+    void OpenEmailSender()
+    {
+        NavigationManager.NavigateTo("emailsender");
+    }
+
+    void OpenEmailSender(BillSplit billSplit, string name)
+    {
+        BillSplitService.RecipientName = name;
+        objBillSplit = billSplit;
+        NavigationManager.NavigateTo("emailsender");
+    }
+}

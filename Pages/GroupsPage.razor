@@ -1,0 +1,177 @@
+﻿@page "/groupspage"
+@using SplitWise.Data
+@using SplitWiseDB.Data.SplitWise
+@inject NavigationManager NavigationManager
+@inject Data.GroupService GroupService
+@inherits OwningComponentBase<GroupService>
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<AuthorizeView>
+    <Authorized>
+        <h1>Мои группы</h1>
+        <br />
+        @if (groups == null)
+        {
+            <p><em>Загружаем данные...</em></p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th> Дата </th>
+                        <th> Название </th>
+                        <th> Создатель </th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in groups)
+                    {
+                        <tr>
+                            <td>@group.Date.Value.ToShortDateString()</td>
+                            <td>@group.GroupName</td>
+                            <td>@group.UserName</td>
+                            <td>
+                                <button class="btn btn-primary"
+                                        @onclick="(() => OpenGroup(group, group.Id, group.GroupName))">
+                                    Открыть
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-primary"
+                                        @onclick="(() => EditGroup(group))">
+                                    Редактировать
+                                </button>
+                                
+                            </td>
+                            <td>
+                                <button class="btn btn-primary"
+                                        @onclick="DeleteGroup">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p>
+                <button class="btn btn-primary"
+                        @onclick="AddNewGroup">
+                    Создать группу
+                </button>
+            </p>
+            @if (ShowPopup)
+            {
+                <div class="modal" tabindex="-1" style="display:block" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 class="modal-title">Редактировать</h3>
+                                <button type="button" class="close"
+                                        @onclick="ClosePopup">
+                                    <span aria-hidden="true">X</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <input class="form-control" type="text"
+                                       placeholder="Название группы"
+                                       @bind="objGroup.GroupName" />
+                                <br />
+                                <button class="btn btn-primary"
+                                        @onclick="SaveGroup">
+                                    Сохранить
+                                </button>
+                                
+                            </div>
+                            </div>
+                    </div>
+                </div>
+            }
+
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>Войдите в приложение.</p>
+    </NotAuthorized>
+</AuthorizeView>
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    List<Group> groups;
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+        groups = await @Service.GetGroupAsync(user.Identity.Name);
+    }
+
+    Group objGroup = new Group();
+
+    bool ShowPopup = false;
+
+    void ClosePopup()
+    {
+        ShowPopup = false;
+    }
+
+    void AddNewGroup()
+    {
+        objGroup = new Group();
+        objGroup.Id = 0;
+        ShowPopup = true;
+    }
+
+    async Task SaveGroup()
+    {
+        ShowPopup = false;
+        var user = (await authenticationStateTask).User;
+        if (objGroup.Id == 0)
+        {
+            Group objNewGroup = new Group();
+
+            objNewGroup.Date = System.DateTime.Now;
+
+            objNewGroup.GroupName = objGroup.GroupName;
+
+            objNewGroup.UserName = user.Identity.Name;
+
+            var result =
+            @Service.CreateGroupAsync(objNewGroup);
+        }
+        else
+        {
+            var result =
+            @Service.UpdateGroupAsync(objGroup);
+        }
+
+        groups =
+        await @Service.GetGroupAsync(user.Identity.Name);
+    }
+
+
+    void OpenGroup(Group groupTable, int i, string name)
+    {
+        GroupService.Name = name;
+        GroupService.IdNumber = i;
+        objGroup = groupTable;
+        NavigationManager.NavigateTo("billspage");
+
+    }
+
+    void EditGroup(Group groupTable)
+    {
+        objGroup = groupTable;
+        ShowPopup = true;
+    }
+
+    async Task DeleteGroup()
+    {
+        ShowPopup = false;
+        var user = (await authenticationStateTask).User;
+        var result = @Service.DeleteGroupAsync(objGroup);
+        groups =
+        await @Service.GetGroupAsync(user.Identity.Name);
+    }
+}
