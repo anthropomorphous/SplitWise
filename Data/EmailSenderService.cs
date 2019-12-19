@@ -13,7 +13,7 @@ namespace SplitWise.Data
         {
             var emailMessage = new MimeMessage();
 
-            emailMessage.From.Add(new MailboxAddress("Отправитель", emailFrom));
+            emailMessage.From.Add(new MailboxAddress("IgiLab", emailFrom));
             emailMessage.To.Add(new MailboxAddress("Получатель", emailTo));
             emailMessage.Subject = subject;
             emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html)
@@ -23,7 +23,7 @@ namespace SplitWise.Data
 
             using (var client = new SmtpClient())
             {
-                await client.ConnectAsync("smtp.mail.ru", 25, false);
+                await client.ConnectAsync("smtp.gmail.com", 25, false);
                 await client.AuthenticateAsync(emailFrom, password);
                 await client.SendAsync(emailMessage);
 

@@ -51,18 +51,18 @@
             <input class="my-input form-control"
                    typeof="text"
                    placeholder="Email участника"
-                   @bind="BillSplitService.RecipientName" />
+                   @bind="eMailTo" />
         </span>
     </div>
     <br />
 
     <div>
         Ваше сообщение: <br />
-        <textarea name="customerRequest" 
-                  class="form-control" 
-                  cols="45" 
+        <textarea name="customerRequest"
+                  class="form-control"
+                  cols="45"
                   rows="4"
-                  placeholder="Введите сообщение @eMailTo..."
+                  placeholder="Введите сообщение..."
                   @bind="message">
         </textarea>
 
@@ -73,7 +73,24 @@
             @onclick="SendMail">
         Отправить
     </button>
-</div>
+
+    @if (ShowPopup)
+    {
+        <div class="modal" tabindex="-1" style="display:block" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Сообщение отправлено</h3>
+                        <button type="button" class="close"
+                                @onclick="ClosePopup">
+                            <span aria-hidden="true">X</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+ </div>
 
 @code {
 
@@ -94,6 +111,12 @@
         eMailTo = BillSplitService.RecipientName;
     }
 
+    bool ShowPopup = false;
+
+    void ClosePopup()
+    {
+        ShowPopup = false;
+    }
 
     async Task SendMail()
     {
@@ -102,6 +125,8 @@
            @Service.SendEmailAsync(eMailFrom, password, eMailTo, subject, message);
 
         logger.LogInformation("Message is sent");
+
+        ShowPopup = true;
 
         // lbl =
         //  await @Service.SendEmailAsync(EmailService.Message);
